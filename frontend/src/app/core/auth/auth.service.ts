@@ -1,3 +1,4 @@
+import { apiUrl } from '../api/api-url';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, signal } from '@angular/core';
 import { catchError, map, of, tap } from 'rxjs';
@@ -8,7 +9,7 @@ const USER_KEY = 'fintrack.usuario';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly apiUrl = 'http://localhost:8080/api';
+  private readonly apiUrl = apiUrl();
   private readonly usuarioSignal = signal<UsuarioResumo | null>(this.carregarUsuario());
 
   readonly usuarioAtual = this.usuarioSignal.asReadonly();

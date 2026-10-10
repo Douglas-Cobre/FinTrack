@@ -77,6 +77,9 @@ public class ContaFinanceiraService {
     @Transactional
     public void excluir(UUID id) {
         var conta = obterContaDoUsuario(id);
+        if (contaFinanceiraRepository.emUso(id)) {
+            throw new RegraNegocioException("Nao e possivel excluir uma conta com movimentacoes, compromissos ou parcelas vinculados.");
+        }
         contaFinanceiraRepository.delete(conta);
     }
 

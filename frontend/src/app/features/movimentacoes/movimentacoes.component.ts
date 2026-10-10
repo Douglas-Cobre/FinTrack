@@ -1,5 +1,9 @@
+import { finalize } from 'rxjs';
+import { ConfirmacaoService } from '../../shared/confirmacao-dialog.component';
+import { mensagemErro } from '../../shared/mensagem-erro';
+import { dataLocal } from '../../shared/data-local';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -32,7 +36,7 @@ import { FeatureShellComponent } from '../shared/feature-shell.component';
     FeatureShellComponent
   ],
   template: `
-    <app-feature-shell titulo="Movimentacoes" eyebrow="Fase 5">
+    <app-feature-shell titulo="Movimentacoes">
       <section class="layout">
         <mat-card appearance="outlined">
           <mat-card-header>
@@ -85,14 +89,15 @@ import { FeatureShellComponent } from '../shared/feature-shell.component';
               <mat-form-field appearance="outline">
                 <mat-label>Categoria</mat-label>
                 <mat-select formControlName="categoriaId">
+                  <mat-option [value]="null">Sem categoria</mat-option>
                   <mat-option *ngFor="let categoria of categorias" [value]="categoria.id">{{ categoria.nome }}</mat-option>
                 </mat-select>
               </mat-form-field>
 
-              <p class="error" *ngIf="erro">{{ erro }}</p>
+              <p role="alert" class="error" *ngIf="erro">{{ erro }}</p>
 
               <div class="actions">
-                <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid">Salvar</button>
+                <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || salvando">Salvar</button>
                 <button mat-button type="button" *ngIf="movimentacaoEmEdicao" (click)="cancelar()">Cancelar</button>
               </div>
             </form>
@@ -108,26 +113,34 @@ import { FeatureShellComponent } from '../shared/feature-shell.component';
           <mat-card-content>
             <div class="empty-state" *ngIf="movimentacoes.length === 0">
               <strong>Nenhuma movimentacao registrada</strong>
-              <span>Cadastre contas e categorias antes de criar movimentacoes.</span>
+              <span>Cadastre uma conta financeira para criar receitas e despesas.</span>
             </div>
 
-            <mat-list *ngIf="movimentacoes.length > 0">
-              <mat-list-item *ngFor="let movimentacao of movimentacoes">
-                <span matListItemTitle>{{ movimentacao.descricao }}</span>
-                <span matListItemLine>{{ movimentacao.contaFinanceiraNome }} - {{ movimentacao.categoriaNome }} - {{ movimentacao.data | date:'dd/MM/yyyy' }}</span>
+            <div role="list" *ngIf="movimentacoes.length > 0">
+              <div role="listitem" class="registro" *ngFor="let movimentacao of movimentacoes">
+                <span class="registro-titulo">{{ movimentacao.descricao }}</span>
+                <span class="registro-detalhe" *ngIf="movimentacao.origemTipo !== 'MANUAL'">Gerada por compromisso · alteração direta bloqueada</span>
+                <span class="registro-detalhe">{{ movimentacao.contaFinanceiraNome }} - {{ movimentacao.categoriaNome ?? 'Sem categoria' }} - {{ movimentacao.data | date:'dd/MM/yyyy' }}</span>
                 <strong [class.receita]="movimentacao.tipo === 'RECEITA'" [class.despesa]="movimentacao.tipo === 'DESPESA'">
                   {{ movimentacao.valor | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
                 </strong>
-                <button mat-button type="button" (click)="editar(movimentacao)">Editar</button>
-                <button mat-button color="warn" type="button" (click)="excluir(movimentacao)">Excluir</button>
-              </mat-list-item>
-            </mat-list>
+                <button mat-button type="button" [disabled]="movimentacao.origemTipo !== 'MANUAL' || !!movimentacao.origemId" (click)="editar(movimentacao)">Editar</button>
+                <button mat-button color="warn" type="button" [disabled]="movimentacao.origemTipo !== 'MANUAL' || !!movimentacao.origemId" (click)="excluir(movimentacao)">Excluir</button>
+              </div>
+            </div>
           </mat-card-content>
         </mat-card>
       </section>
     </app-feature-shell>
   `,
   styles: [`
+    .registro { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 16px 0; border-bottom: 1px solid #e0e8e4; }
+    .registro-titulo, .registro-detalhe { width: 100%; overflow-wrap: anywhere; }
+    .registro-titulo { font-weight: 600; }
+    .registro-detalhe { color: #566761; font-size: 0.9rem; }
+    mat-card { min-width: 0; }
+    .actions, .row-actions { flex-wrap: wrap; }
+
     .layout {
       display: grid;
       grid-template-columns: minmax(320px, 460px) minmax(0, 1fr);
@@ -191,11 +204,13 @@ import { FeatureShellComponent } from '../shared/feature-shell.component';
   `]
 })
 export class MovimentacoesComponent implements OnInit {
+  private readonly confirmacao = inject(ConfirmacaoService);
   protected contas: ContaFinanceira[] = [];
   protected categorias: Categoria[] = [];
   protected movimentacoes: Movimentacao[] = [];
   protected movimentacaoEmEdicao: Movimentacao | null = null;
   protected erro = '';
+  protected salvando = false;
   protected valorTexto = '';
 
   private readonly moedaFormatter = new Intl.NumberFormat('pt-BR', {
@@ -207,9 +222,9 @@ export class MovimentacoesComponent implements OnInit {
     descricao: ['', Validators.required],
     tipo: ['DESPESA' as TipoMovimentacao, Validators.required],
     valor: [0, [Validators.required, Validators.min(0.01)]],
-    data: [new Date().toISOString().slice(0, 10), Validators.required],
+    data: [dataLocal(), Validators.required],
     contaFinanceiraId: ['', Validators.required],
-    categoriaId: ['', Validators.required]
+    categoriaId: [null as string | null]
   });
 
   constructor(
@@ -228,31 +243,32 @@ export class MovimentacoesComponent implements OnInit {
     this.categoriaService.listar(this.form.controls.tipo.value).subscribe({
       next: (categorias) => {
         this.categorias = categorias;
-        this.form.controls.categoriaId.setValue('');
+        this.form.controls.categoriaId.setValue(null);
       },
-      error: () => this.erro = 'Nao foi possivel carregar categorias.'
+      error: error => this.erro = mensagemErro(error, 'Nao foi possivel carregar categorias.')
     });
   }
 
   protected salvar(): void {
-    if (this.form.invalid) {
+    if (this.form.invalid || this.salvando) {
       this.form.markAllAsTouched();
       this.formatarValor();
       return;
     }
 
     this.erro = '';
+    this.salvando = true;
     const request = this.form.getRawValue();
     const operacao = this.movimentacaoEmEdicao
       ? this.movimentacaoService.atualizar(this.movimentacaoEmEdicao.id, request)
       : this.movimentacaoService.criar(request);
 
-    operacao.subscribe({
+    operacao.pipe(finalize(() => this.salvando = false)).subscribe({
       next: () => {
         this.cancelar();
         this.carregarMovimentacoes();
       },
-      error: () => this.erro = 'Nao foi possivel salvar a movimentacao.'
+      error: error => this.erro = mensagemErro(error, 'Nao foi possivel salvar a movimentacao.')
     });
   }
 
@@ -271,9 +287,16 @@ export class MovimentacoesComponent implements OnInit {
   }
 
   protected excluir(movimentacao: Movimentacao): void {
-    this.movimentacaoService.excluir(movimentacao.id).subscribe({
-      next: () => this.carregarMovimentacoes(),
-      error: () => this.erro = 'Nao foi possivel excluir a movimentacao.'
+    this.confirmacao.executar({
+      titulo: 'Excluir movimentação?',
+      mensagem: `Excluir "${movimentacao.descricao}"? Esta ação não pode ser desfeita.`,
+      acao: 'Excluir',
+      executar: () => this.movimentacaoService.excluir(movimentacao.id)
+    }).subscribe(confirmado => {
+      if (confirmado) {
+        this.erro = '';
+        this.carregarMovimentacoes();
+      }
     });
   }
 
@@ -283,9 +306,9 @@ export class MovimentacoesComponent implements OnInit {
       descricao: '',
       tipo: 'DESPESA',
       valor: 0,
-      data: new Date().toISOString().slice(0, 10),
+      data: dataLocal(),
       contaFinanceiraId: '',
-      categoriaId: ''
+      categoriaId: null
     });
     this.valorTexto = '';
     this.carregarCategoriasPorTipo();
@@ -321,7 +344,7 @@ export class MovimentacoesComponent implements OnInit {
   private carregarMovimentacoes(): void {
     this.movimentacaoService.listar().subscribe({
       next: (movimentacoes) => this.movimentacoes = movimentacoes,
-      error: () => this.erro = 'Nao foi possivel carregar movimentacoes.'
+      error: error => this.erro = mensagemErro(error, 'Nao foi possivel carregar movimentacoes.')
     });
   }
 

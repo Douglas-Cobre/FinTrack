@@ -5,9 +5,9 @@ services:
     environment:
       POSTGRES_DB: fintrack
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 8318
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Copie .env.example para .env e configure DB_PASSWORD}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - fintrack-postgres-data:/var/lib/postgresql/data
     healthcheck:

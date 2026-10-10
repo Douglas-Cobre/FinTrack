@@ -45,8 +45,8 @@ public class Movimentacao extends BaseEntity {
     @JoinColumn(name = "conta_financeira_id", nullable = false)
     private ContaFinanceira contaFinanceira;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "categoria_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "categoria_id")
     private Categoria categoria;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -132,5 +132,13 @@ public class Movimentacao extends BaseEntity {
 
     public Usuario getUsuario() {
         return usuario;
+    }
+
+    public OrigemMovimentacaoTipo getOrigemTipo() {
+        return origemTipo;
+    }
+
+    public UUID getOrigemId() {
+        return origemId;
     }
 }

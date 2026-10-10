@@ -1,10 +1,11 @@
+import { apiUrl } from '../api/api-url';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Categoria, CategoriaRequest, TipoMovimentacao } from './categoria.models';
 
 @Injectable({ providedIn: 'root' })
 export class CategoriaService {
-  private readonly apiUrl = 'http://localhost:8080/api/categorias';
+  private readonly apiUrl = apiUrl('categorias');
 
   constructor(private readonly http: HttpClient) {}
 

@@ -1,10 +1,11 @@
+import { apiUrl } from '../api/api-url';
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { ContaFinanceira, ContaFinanceiraRequest } from './conta-financeira.models';
 
 @Injectable({ providedIn: 'root' })
 export class ContaFinanceiraService {
-  private readonly apiUrl = 'http://localhost:8080/api/contas-financeiras';
+  private readonly apiUrl = apiUrl('contas-financeiras');
 
   constructor(private readonly http: HttpClient) {}
 

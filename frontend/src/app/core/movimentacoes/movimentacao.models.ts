@@ -8,8 +8,10 @@ export type Movimentacao = {
   data: string;
   contaFinanceiraId: string;
   contaFinanceiraNome: string;
-  categoriaId: string;
-  categoriaNome: string;
+  categoriaId: string | null;
+  categoriaNome: string | null;
+  origemTipo: 'MANUAL' | 'CONTA_A_PAGAR' | 'CONTA_A_RECEBER' | 'PARCELA';
+  origemId: string | null;
 };
 
 export type MovimentacaoRequest = {
@@ -18,5 +20,5 @@ export type MovimentacaoRequest = {
   tipo: TipoMovimentacao;
   data: string;
   contaFinanceiraId: string;
-  categoriaId: string;
+  categoriaId: string | null;
 };

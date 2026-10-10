@@ -1,18 +1,14 @@
-import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatToolbarModule } from '@angular/material/toolbar';
 
 @Component({
   selector: 'app-feature-shell',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatCardModule, MatToolbarModule],
+  imports: [MatToolbarModule],
   template: `
     <main class="page">
       <mat-toolbar class="toolbar">
         <div>
-          <span class="eyebrow">{{ eyebrow }}</span>
           <h1>{{ titulo }}</h1>
         </div>
       </mat-toolbar>
@@ -29,10 +25,12 @@ import { MatToolbarModule } from '@angular/material/toolbar';
     }
 
     .toolbar {
-      min-height: 92px;
-      padding: 18px 32px;
+      min-height: 72px;
+      padding: 12px 32px;
       background: rgba(238, 242, 241, 0.94);
     }
+
+    .toolbar { white-space: normal; }
 
     .toolbar h1 {
       margin: 0;
@@ -42,22 +40,18 @@ import { MatToolbarModule } from '@angular/material/toolbar';
       line-height: 1.1;
     }
 
-    .eyebrow {
-      display: block;
-      margin-bottom: 6px;
-      color: #2f6f63;
-      font-size: 12px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0;
-    }
-
     .content {
       padding: 0 32px 32px;
+      min-width: 0;
+    }
+
+    @media (max-width: 720px) {
+      .toolbar { padding: 12px 20px; }
+      .toolbar h1 { font-size: 28px; }
+      .content { padding: 0 20px 24px; }
     }
   `]
 })
 export class FeatureShellComponent {
   @Input({ required: true }) titulo = '';
-  @Input() eyebrow = 'FinTrack';
 }

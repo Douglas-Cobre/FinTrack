@@ -39,6 +39,18 @@ public class ContaAReceber extends BaseEntity {
     @Column(name = "data_vencimento", nullable = false)
     private LocalDate dataVencimento;
 
+    @Column(name = "multa_percentual", nullable = false, precision = 7, scale = 4)
+    private BigDecimal multaPercentual = BigDecimal.ZERO;
+
+    @Column(name = "juros_dia_percentual", nullable = false, precision = 7, scale = 4)
+    private BigDecimal jurosDiaPercentual = BigDecimal.ZERO;
+
+    @Column(name = "desconto_percentual", nullable = false, precision = 7, scale = 4)
+    private BigDecimal descontoPercentual = BigDecimal.ZERO;
+
+    @Column(name = "desconto_dias_antes", nullable = false)
+    private Integer descontoDiasAntes = 0;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private StatusContaAReceber status = StatusContaAReceber.PENDENTE;
@@ -73,7 +85,11 @@ public class ContaAReceber extends BaseEntity {
             ContaFinanceira contaFinanceira,
             Categoria categoria,
             FonteDeRenda fonteDeRenda,
-            Usuario usuario
+            Usuario usuario,
+            BigDecimal multaPercentual,
+            BigDecimal jurosDiaPercentual,
+            BigDecimal descontoPercentual,
+            Integer descontoDiasAntes
     ) {
         this.descricao = descricao;
         this.valor = valor;
@@ -82,6 +98,10 @@ public class ContaAReceber extends BaseEntity {
         this.categoria = categoria;
         this.fonteDeRenda = fonteDeRenda;
         this.usuario = usuario;
+        this.multaPercentual = multaPercentual;
+        this.jurosDiaPercentual = jurosDiaPercentual;
+        this.descontoPercentual = descontoPercentual;
+        this.descontoDiasAntes = descontoDiasAntes;
     }
 
     public void atualizar(
@@ -91,7 +111,11 @@ public class ContaAReceber extends BaseEntity {
             ContaFinanceira contaFinanceira,
             Categoria categoria,
             FonteDeRenda fonteDeRenda,
-            StatusContaAReceber status
+            StatusContaAReceber status,
+            BigDecimal multaPercentual,
+            BigDecimal jurosDiaPercentual,
+            BigDecimal descontoPercentual,
+            Integer descontoDiasAntes
     ) {
         this.descricao = descricao;
         this.valor = valor;
@@ -100,6 +124,10 @@ public class ContaAReceber extends BaseEntity {
         this.categoria = categoria;
         this.fonteDeRenda = fonteDeRenda;
         this.status = status;
+        this.multaPercentual = multaPercentual;
+        this.jurosDiaPercentual = jurosDiaPercentual;
+        this.descontoPercentual = descontoPercentual;
+        this.descontoDiasAntes = descontoDiasAntes;
     }
 
     public void marcarComoRecebida(Movimentacao movimentacao) {
@@ -130,6 +158,22 @@ public class ContaAReceber extends BaseEntity {
 
     public StatusContaAReceber getStatus() {
         return status;
+    }
+
+    public BigDecimal getMultaPercentual() {
+        return multaPercentual;
+    }
+
+    public BigDecimal getJurosDiaPercentual() {
+        return jurosDiaPercentual;
+    }
+
+    public BigDecimal getDescontoPercentual() {
+        return descontoPercentual;
+    }
+
+    public Integer getDescontoDiasAntes() {
+        return descontoDiasAntes;
     }
 
     public ContaFinanceira getContaFinanceira() {

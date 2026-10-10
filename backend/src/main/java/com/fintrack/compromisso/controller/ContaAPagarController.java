@@ -3,6 +3,10 @@ package com.fintrack.compromisso.controller;
 import com.fintrack.compromisso.dto.ContaAPagarRequest;
 import com.fintrack.compromisso.dto.ContaAPagarResponse;
 import com.fintrack.compromisso.dto.EfetivacaoRequest;
+import com.fintrack.compromisso.dto.PreviaEfetivacaoResponse;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDate;
 import com.fintrack.compromisso.service.ContaAPagarService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -43,6 +47,12 @@ public class ContaAPagarController {
     @PutMapping("/{id}")
     public ContaAPagarResponse atualizar(@PathVariable UUID id, @Valid @RequestBody ContaAPagarRequest request) {
         return contaAPagarService.atualizar(id, request);
+    }
+
+    @GetMapping("/{id}/previa")
+    public PreviaEfetivacaoResponse previa(@PathVariable UUID id,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data) {
+        return contaAPagarService.previa(id, data);
     }
 
     @PostMapping("/{id}/pagar")

@@ -1,12 +1,14 @@
 {
   "name": "fintrack-frontend",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "test": "ng test"
+    "test": "npm run test:datas && npm run test:api",
+    "test:datas": "node scripts/test-data-local.cjs",
+    "test:api": "node scripts/test-api.cjs"
   },
   "dependencies": {
     "@angular/animations": "^18.2.0",
@@ -19,6 +21,8 @@
     "@angular/platform-browser": "^18.2.0",
     "@angular/platform-browser-dynamic": "^18.2.0",
     "@angular/router": "^18.2.0",
+    "chart.js": "4.4.9",
+    "ng2-charts": "7.0.0",
     "rxjs": "^7.8.1",
     "tslib": "^2.6.3",
     "zone.js": "^0.14.10"
