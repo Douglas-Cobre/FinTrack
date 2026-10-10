@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { mensagemErro } from '../../shared/mensagem-erro';
 import { Component } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -50,7 +51,7 @@ import { AuthService } from '../../core/auth/auth.service';
               <mat-error>Informe sua senha</mat-error>
             </mat-form-field>
 
-            <p class="error" *ngIf="erro">{{ erro }}</p>
+            <p class="error" role="alert" *ngIf="erro">{{ erro }}</p>
 
             <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || carregando">
               <mat-spinner *ngIf="carregando" diameter="18"></mat-spinner>
@@ -207,7 +208,7 @@ export class LoginComponent {
   ) {}
 
   protected entrar(): void {
-    if (this.form.invalid) {
+    if (this.form.invalid || this.carregando) {
       return;
     }
 
@@ -216,8 +217,10 @@ export class LoginComponent {
 
     this.authService.login(this.form.getRawValue()).subscribe({
       next: () => this.router.navigateByUrl('/'),
-      error: () => {
-        this.erro = 'Email ou senha invalidos.';
+      error: error => {
+        this.erro = error.status === 401
+          ? 'Email ou senha invalidos.'
+          : mensagemErro(error, 'Nao foi possivel entrar. Tente novamente.');
         this.carregando = false;
       }
     });
