@@ -38,6 +38,18 @@ public class ContaAPagar extends BaseEntity {
     @Column(name = "data_vencimento", nullable = false)
     private LocalDate dataVencimento;
 
+    @Column(name = "multa_percentual", nullable = false, precision = 7, scale = 4)
+    private BigDecimal multaPercentual = BigDecimal.ZERO;
+
+    @Column(name = "juros_dia_percentual", nullable = false, precision = 7, scale = 4)
+    private BigDecimal jurosDiaPercentual = BigDecimal.ZERO;
+
+    @Column(name = "desconto_percentual", nullable = false, precision = 7, scale = 4)
+    private BigDecimal descontoPercentual = BigDecimal.ZERO;
+
+    @Column(name = "desconto_dias_antes", nullable = false)
+    private Integer descontoDiasAntes = 0;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private StatusContaAPagar status = StatusContaAPagar.PENDENTE;
@@ -67,7 +79,11 @@ public class ContaAPagar extends BaseEntity {
             LocalDate dataVencimento,
             ContaFinanceira contaFinanceira,
             Categoria categoria,
-            Usuario usuario
+            Usuario usuario,
+            BigDecimal multaPercentual,
+            BigDecimal jurosDiaPercentual,
+            BigDecimal descontoPercentual,
+            Integer descontoDiasAntes
     ) {
         this.descricao = descricao;
         this.valor = valor;
@@ -75,6 +91,10 @@ public class ContaAPagar extends BaseEntity {
         this.contaFinanceira = contaFinanceira;
         this.categoria = categoria;
         this.usuario = usuario;
+        this.multaPercentual = multaPercentual;
+        this.jurosDiaPercentual = jurosDiaPercentual;
+        this.descontoPercentual = descontoPercentual;
+        this.descontoDiasAntes = descontoDiasAntes;
     }
 
     public void atualizar(
@@ -83,7 +103,11 @@ public class ContaAPagar extends BaseEntity {
             LocalDate dataVencimento,
             ContaFinanceira contaFinanceira,
             Categoria categoria,
-            StatusContaAPagar status
+            StatusContaAPagar status,
+            BigDecimal multaPercentual,
+            BigDecimal jurosDiaPercentual,
+            BigDecimal descontoPercentual,
+            Integer descontoDiasAntes
     ) {
         this.descricao = descricao;
         this.valor = valor;
@@ -91,6 +115,10 @@ public class ContaAPagar extends BaseEntity {
         this.contaFinanceira = contaFinanceira;
         this.categoria = categoria;
         this.status = status;
+        this.multaPercentual = multaPercentual;
+        this.jurosDiaPercentual = jurosDiaPercentual;
+        this.descontoPercentual = descontoPercentual;
+        this.descontoDiasAntes = descontoDiasAntes;
     }
 
     public void marcarComoPaga(Movimentacao movimentacao) {
@@ -121,6 +149,22 @@ public class ContaAPagar extends BaseEntity {
 
     public StatusContaAPagar getStatus() {
         return status;
+    }
+
+    public BigDecimal getMultaPercentual() {
+        return multaPercentual;
+    }
+
+    public BigDecimal getJurosDiaPercentual() {
+        return jurosDiaPercentual;
+    }
+
+    public BigDecimal getDescontoPercentual() {
+        return descontoPercentual;
+    }
+
+    public Integer getDescontoDiasAntes() {
+        return descontoDiasAntes;
     }
 
     public ContaFinanceira getContaFinanceira() {

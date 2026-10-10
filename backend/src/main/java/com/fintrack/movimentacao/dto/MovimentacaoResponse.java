@@ -1,6 +1,7 @@
 package com.fintrack.movimentacao.dto;
 
 import com.fintrack.shared.domain.TipoMovimentacao;
+import com.fintrack.movimentacao.domain.OrigemMovimentacaoTipo;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -15,6 +16,8 @@ public record MovimentacaoResponse(
         UUID contaFinanceiraId,
         String contaFinanceiraNome,
         UUID categoriaId,
-        String categoriaNome
+        String categoriaNome,
+        OrigemMovimentacaoTipo origemTipo,
+        UUID origemId
 ) {
 }

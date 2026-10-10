@@ -1,0 +1,35 @@
+:host { display: block; min-width: 0; }
+.regime { margin: 0 0 20px; color: #48635a; }
+.filtros { margin-bottom: 20px; }
+form { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding-top: 18px; }
+mat-form-field { flex: 1 1 180px; max-width: 280px; }
+form button { margin-bottom: 20px; }
+.periodo { color: #48635a; }
+.estado, .aviso { padding: 18px; margin-bottom: 20px; border-radius: 8px; background: #f8fbfa; }
+.aviso { background: #fff4d6; color: #704e00; }
+.aviso a { margin: 4px 8px 0 0; }
+.erro { background: #fdecea; }
+.erro, .erro-periodo, .negativo { color: #b42318; }
+.tabela-scroll { overflow-x: auto; }
+table { width: 100%; }
+th { color: #48635a; }
+.sinal { display: inline-block; width: 28px; color: #48635a; }
+.valor { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.subtotal { background: #e8f1ed; font-weight: 700; }
+.resultado-final { background: #cee8dc; }
+.detalhes { height: auto; }
+.detalhes td { padding: 0; border-bottom-width: 0; }
+.fechado { display: none; }
+.categorias { padding: 12px 24px 12px 56px; background: #f8fbfa; }
+.categoria { display: flex; justify-content: space-between; gap: 20px; padding: 8px 0; }
+small { color: #48635a; }
+.fora-dre { margin-top: 20px; }
+.nota { color: #48635a; font-size: 13px; line-height: 1.6; margin-top: 20px; }
+@media (max-width: 600px) {
+  mat-form-field { max-width: none; }
+  form button { width: 100%; }
+  td.mat-mdc-cell, th.mat-mdc-header-cell { padding: 12px; }
+  td:first-child { min-width: 210px; }
+  td button { height: auto; text-align: left; padding: 6px 0; }
+  .categorias { padding: 12px; }
+}

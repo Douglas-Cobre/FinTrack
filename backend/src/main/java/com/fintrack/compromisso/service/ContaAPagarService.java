@@ -7,6 +7,7 @@ import com.fintrack.compromisso.domain.StatusContaAPagar;
 import com.fintrack.compromisso.dto.ContaAPagarRequest;
 import com.fintrack.compromisso.dto.ContaAPagarResponse;
 import com.fintrack.compromisso.dto.EfetivacaoRequest;
+import com.fintrack.compromisso.dto.PreviaEfetivacaoResponse;
 import com.fintrack.compromisso.repository.ContaAPagarRepository;
 import com.fintrack.conta.domain.ContaFinanceira;
 import com.fintrack.conta.repository.ContaFinanceiraRepository;
@@ -20,6 +21,8 @@ import com.fintrack.usuario.service.UsuarioService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -49,17 +52,24 @@ public class ContaAPagarService {
     @Transactional
     public ContaAPagarResponse criar(ContaAPagarRequest request) {
         var usuario = usuarioService.obterUsuarioAutenticado();
+        if (request.status() != null && request.status() != StatusContaAPagar.PENDENTE) {
+            throw new RegraNegocioException("Novos compromissos devem ser criados como pendentes.");
+        }
         var conta = obterConta(request.contaFinanceiraId(), usuario);
         var categoria = categoriaService.obterCategoriaDoUsuario(request.categoriaId());
         validarCategoriaDespesa(categoria);
 
         var contaAPagar = new ContaAPagar(
-                request.descricao().trim(),
+                normalizarDescricao(request.descricao()),
                 request.valor(),
                 request.dataVencimento(),
                 conta,
                 categoria,
-                usuario
+                usuario,
+                percentual(request.multaPercentual()),
+                percentual(request.jurosDiaPercentual()),
+                percentual(request.descontoPercentual()),
+                diasDesconto(request.descontoDiasAntes())
         );
 
         return toResponse(contaAPagarRepository.save(contaAPagar));
@@ -79,8 +89,15 @@ public class ContaAPagarService {
         var usuario = usuarioService.obterUsuarioAutenticado();
         var contaAPagar = obterContaAPagar(id, usuario);
 
-        if (contaAPagar.getMovimentacao() != null) {
+        if (contaAPagar.getMovimentacao() != null || contaAPagar.getStatus() == StatusContaAPagar.PAGA) {
             throw new RegraNegocioException("Nao e possivel editar uma conta ja paga.");
+        }
+
+        if (contaAPagar.getStatus() == StatusContaAPagar.CANCELADA) {
+            throw new RegraNegocioException("Nao e possivel editar um compromisso cancelado.");
+        }
+        if (request.status() != null && request.status() != contaAPagar.getStatus()) {
+            throw new RegraNegocioException("Use as operacoes de efetivacao ou cancelamento para alterar o status.");
         }
 
         var conta = obterConta(request.contaFinanceiraId(), usuario);
@@ -88,12 +105,16 @@ public class ContaAPagarService {
         validarCategoriaDespesa(categoria);
 
         contaAPagar.atualizar(
-                request.descricao().trim(),
+                normalizarDescricao(request.descricao()),
                 request.valor(),
                 request.dataVencimento(),
                 conta,
                 categoria,
-                request.status() == null ? StatusContaAPagar.PENDENTE : request.status()
+                contaAPagar.getStatus(),
+                percentual(request.multaPercentual()),
+                percentual(request.jurosDiaPercentual()),
+                percentual(request.descontoPercentual()),
+                diasDesconto(request.descontoDiasAntes())
         );
 
         return toResponse(contaAPagar);
@@ -112,9 +133,13 @@ public class ContaAPagarService {
             throw new RegraNegocioException("Nao e possivel pagar uma conta cancelada.");
         }
 
+        var previa = calcularPrevia(contaAPagar, request.data());
+        CalculoEfetivacao.validarConfirmacao(previa, request.valorConfirmado());
+        validarCategoriaDespesa(contaAPagar.getCategoria());
+
         var movimentacao = movimentacaoRepository.save(new Movimentacao(
                 contaAPagar.getDescricao(),
-                contaAPagar.getValor(),
+                previa.valorAtualizado(),
                 TipoMovimentacao.DESPESA,
                 request.data(),
                 contaAPagar.getContaFinanceira(),
@@ -133,7 +158,7 @@ public class ContaAPagarService {
         var usuario = usuarioService.obterUsuarioAutenticado();
         var contaAPagar = obterContaAPagar(id, usuario);
 
-        if (contaAPagar.getMovimentacao() != null) {
+        if (contaAPagar.getMovimentacao() != null || contaAPagar.getStatus() == StatusContaAPagar.PAGA) {
             throw new RegraNegocioException("Nao e possivel cancelar uma conta ja paga.");
         }
 
@@ -146,7 +171,7 @@ public class ContaAPagarService {
         var usuario = usuarioService.obterUsuarioAutenticado();
         var contaAPagar = obterContaAPagar(id, usuario);
 
-        if (contaAPagar.getMovimentacao() != null) {
+        if (contaAPagar.getMovimentacao() != null || contaAPagar.getStatus() == StatusContaAPagar.PAGA) {
             throw new RegraNegocioException("Nao e possivel excluir uma conta ja paga.");
         }
 
@@ -154,7 +179,7 @@ public class ContaAPagarService {
     }
 
     private ContaAPagar obterContaAPagar(UUID id, Usuario usuario) {
-        return contaAPagarRepository.findByIdAndUsuarioId(id, usuario.getId())
+        return contaAPagarRepository.buscarParaAtualizacao(id, usuario.getId())
                 .orElseThrow(() -> new RegraNegocioException("Conta a pagar nao encontrada."));
     }
 
@@ -169,17 +194,56 @@ public class ContaAPagarService {
         }
     }
 
+    private BigDecimal percentual(BigDecimal valor) {
+        return valor == null ? BigDecimal.ZERO : valor;
+    }
+
+    private String normalizarDescricao(String descricao) {
+        return descricao == null || descricao.isBlank() ? "Conta a pagar" : descricao.trim();
+    }
+
+    private Integer diasDesconto(Integer valor) {
+        return valor == null ? 0 : valor;
+    }
+
+    @Transactional(readOnly = true)
+    public PreviaEfetivacaoResponse previa(UUID id, LocalDate data) {
+        var usuario = usuarioService.obterUsuarioAutenticado();
+        var compromisso = contaAPagarRepository.findByIdAndUsuarioId(id, usuario.getId())
+                .orElseThrow(() -> new RegraNegocioException("Compromisso nao encontrado."));
+        if (compromisso.getMovimentacao() != null || compromisso.getStatus() == StatusContaAPagar.PAGA
+                || compromisso.getStatus() == StatusContaAPagar.CANCELADA) {
+            throw new RegraNegocioException("Este compromisso nao pode ser efetivado.");
+        }
+        var previa = calcularPrevia(compromisso, data);
+        CalculoEfetivacao.validarConfirmacao(previa, null);
+        return previa;
+    }
+
+    private PreviaEfetivacaoResponse calcularPrevia(ContaAPagar conta, LocalDate data) {
+        return CalculoEfetivacao.calcular(conta.getValor(), conta.getDataVencimento(), data,
+                conta.getMultaPercentual(), conta.getJurosDiaPercentual(),
+                conta.getDescontoPercentual(), conta.getDescontoDiasAntes());
+    }
+
     private ContaAPagarResponse toResponse(ContaAPagar conta) {
         return new ContaAPagarResponse(
                 conta.getId(),
                 conta.getDescricao(),
                 conta.getValor(),
+                conta.getMovimentacao() == null
+                        ? calcularPrevia(conta, LocalDate.now()).valorAtualizado()
+                        : conta.getMovimentacao().getValor(),
                 conta.getDataVencimento(),
                 conta.getStatus(),
                 conta.getContaFinanceira().getId(),
                 conta.getContaFinanceira().getNome(),
                 conta.getCategoria().getId(),
                 conta.getCategoria().getNome(),
+                conta.getMultaPercentual(),
+                conta.getJurosDiaPercentual(),
+                conta.getDescontoPercentual(),
+                conta.getDescontoDiasAntes(),
                 conta.getMovimentacao() == null ? null : conta.getMovimentacao().getId()
         );
     }

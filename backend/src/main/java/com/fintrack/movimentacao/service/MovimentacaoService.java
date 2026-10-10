@@ -42,7 +42,7 @@ public class MovimentacaoService {
     public MovimentacaoResponse criar(MovimentacaoRequest request) {
         var usuario = usuarioService.obterUsuarioAutenticado();
         var conta = obterContaDoUsuario(request.contaFinanceiraId(), usuario);
-        var categoria = categoriaService.obterCategoriaDoUsuario(request.categoriaId());
+        var categoria = obterCategoriaOpcional(request.categoriaId());
         validarCategoria(request, categoria);
 
         var movimentacao = new Movimentacao(
@@ -74,8 +74,9 @@ public class MovimentacaoService {
     public MovimentacaoResponse atualizar(UUID id, MovimentacaoRequest request) {
         var usuario = usuarioService.obterUsuarioAutenticado();
         var movimentacao = obterMovimentacaoDoUsuario(id, usuario);
+        validarMovimentacaoManual(movimentacao);
         var conta = obterContaDoUsuario(request.contaFinanceiraId(), usuario);
-        var categoria = categoriaService.obterCategoriaDoUsuario(request.categoriaId());
+        var categoria = obterCategoriaOpcional(request.categoriaId());
         validarCategoria(request, categoria);
 
         movimentacao.atualizar(
@@ -93,7 +94,15 @@ public class MovimentacaoService {
     @Transactional
     public void excluir(UUID id) {
         var usuario = usuarioService.obterUsuarioAutenticado();
-        movimentacaoRepository.delete(obterMovimentacaoDoUsuario(id, usuario));
+        var movimentacao = obterMovimentacaoDoUsuario(id, usuario);
+        validarMovimentacaoManual(movimentacao);
+        movimentacaoRepository.delete(movimentacao);
+    }
+
+    private void validarMovimentacaoManual(Movimentacao movimentacao) {
+        if (movimentacao.getOrigemTipo() != OrigemMovimentacaoTipo.MANUAL || movimentacao.getOrigemId() != null) {
+            throw new RegraNegocioException("Movimentacoes geradas por compromissos nao podem ser editadas ou excluidas diretamente.");
+        }
     }
 
     private Movimentacao obterMovimentacaoDoUsuario(UUID id, Usuario usuario) {
@@ -106,8 +115,12 @@ public class MovimentacaoService {
                 .orElseThrow(() -> new RegraNegocioException("Conta financeira nao encontrada."));
     }
 
+    private Categoria obterCategoriaOpcional(UUID id) {
+        return id == null ? null : categoriaService.obterCategoriaDoUsuario(id);
+    }
+
     private void validarCategoria(MovimentacaoRequest request, Categoria categoria) {
-        if (categoria.getTipo() != request.tipo()) {
+        if (categoria != null && categoria.getTipo() != request.tipo()) {
             throw new RegraNegocioException("A categoria deve ser compativel com o tipo da movimentacao.");
         }
     }
@@ -121,8 +134,10 @@ public class MovimentacaoService {
                 movimentacao.getData(),
                 movimentacao.getContaFinanceira().getId(),
                 movimentacao.getContaFinanceira().getNome(),
-                movimentacao.getCategoria().getId(),
-                movimentacao.getCategoria().getNome()
+                movimentacao.getCategoria() == null ? null : movimentacao.getCategoria().getId(),
+                movimentacao.getCategoria() == null ? null : movimentacao.getCategoria().getNome(),
+                movimentacao.getOrigemTipo(),
+                movimentacao.getOrigemId()
         );
     }
 }

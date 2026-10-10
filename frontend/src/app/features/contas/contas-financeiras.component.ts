@@ -1,5 +1,7 @@
+import { ConfirmacaoService } from '../../shared/confirmacao-dialog.component';
+import { mensagemErro } from '../../shared/mensagem-erro';
 import { CommonModule, CurrencyPipe } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -35,7 +37,6 @@ type TipoOpcao = {
     <main class="page">
       <mat-toolbar class="toolbar">
         <div>
-          <span class="eyebrow">Fase 3</span>
           <h1>Contas financeiras</h1>
         </div>
       </mat-toolbar>
@@ -71,7 +72,7 @@ type TipoOpcao = {
                 <mat-error>Informe um valor valido</mat-error>
               </mat-form-field>
 
-              <p class="error" *ngIf="erro">{{ erro }}</p>
+              <p role="alert" class="error" *ngIf="erro">{{ erro }}</p>
 
               <div class="actions">
                 <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || carregando">
@@ -95,10 +96,10 @@ type TipoOpcao = {
               <span>Cadastre sua primeira conta para iniciar o controle financeiro.</span>
             </div>
 
-            <mat-list *ngIf="contas.length > 0">
-              <mat-list-item *ngFor="let conta of contas">
-                <span matListItemTitle>{{ conta.nome }}</span>
-                <span matListItemLine>{{ formatarTipo(conta.tipo) }}</span>
+            <div role="list" *ngIf="contas.length > 0">
+              <div role="listitem" class="registro" *ngFor="let conta of contas">
+                <span class="registro-titulo">{{ conta.nome }}</span>
+                <span class="registro-detalhe">{{ formatarTipo(conta.tipo) }}</span>
 
                 <div class="account-values">
                   <span>Inicial: {{ conta.saldoInicial | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
@@ -109,22 +110,29 @@ type TipoOpcao = {
                   <button mat-button type="button" (click)="editar(conta)">Editar</button>
                   <button mat-button color="warn" type="button" (click)="excluir(conta)">Excluir</button>
                 </div>
-              </mat-list-item>
-            </mat-list>
+              </div>
+            </div>
           </mat-card-content>
         </mat-card>
       </section>
     </main>
   `,
   styles: [`
+    .registro { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 16px 0; border-bottom: 1px solid #e0e8e4; }
+    .registro-titulo, .registro-detalhe { width: 100%; overflow-wrap: anywhere; }
+    .registro-titulo { font-weight: 600; }
+    .registro-detalhe { color: #566761; font-size: 0.9rem; }
+    mat-card { min-width: 0; }
+    .actions, .row-actions { flex-wrap: wrap; }
+
     .page {
       min-height: 100vh;
       background: #eef2f1;
     }
 
     .toolbar {
-      min-height: 92px;
-      padding: 18px 32px;
+      min-height: 72px;
+      padding: 12px 32px;
       background: rgba(238, 242, 241, 0.94);
     }
 
@@ -134,16 +142,6 @@ type TipoOpcao = {
       font-size: 32px;
       font-weight: 800;
       line-height: 1.1;
-    }
-
-    .eyebrow {
-      display: block;
-      margin-bottom: 6px;
-      color: #2f6f63;
-      font-size: 12px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0;
     }
 
     .layout {
@@ -247,6 +245,7 @@ type TipoOpcao = {
   `]
 })
 export class ContasFinanceirasComponent implements OnInit {
+  private readonly confirmacao = inject(ConfirmacaoService);
   protected contas: ContaFinanceira[] = [];
   protected carregando = false;
   protected erro = '';
@@ -293,8 +292,8 @@ export class ContasFinanceirasComponent implements OnInit {
         this.cancelarEdicao();
         this.carregarContas();
       },
-      error: () => {
-        this.erro = 'Nao foi possivel salvar a conta financeira.';
+      error: error => {
+        this.erro = mensagemErro(error, 'Nao foi possivel salvar a conta financeira.');
         this.carregando = false;
       }
     });
@@ -310,14 +309,15 @@ export class ContasFinanceirasComponent implements OnInit {
   }
 
   protected excluir(conta: ContaFinanceira): void {
-    this.carregando = true;
-    this.erro = '';
-
-    this.contaFinanceiraService.excluir(conta.id).subscribe({
-      next: () => this.carregarContas(),
-      error: () => {
-        this.erro = 'Nao foi possivel excluir a conta financeira.';
-        this.carregando = false;
+    this.confirmacao.executar({
+      titulo: 'Excluir conta financeira?',
+      mensagem: `Excluir "${conta.nome}"? Esta ação não pode ser desfeita.`,
+      acao: 'Excluir',
+      executar: () => this.contaFinanceiraService.excluir(conta.id)
+    }).subscribe(confirmado => {
+      if (confirmado) {
+        this.erro = '';
+        this.carregarContas();
       }
     });
   }
@@ -343,8 +343,8 @@ export class ContasFinanceirasComponent implements OnInit {
         this.contas = contas;
         this.carregando = false;
       },
-      error: () => {
-        this.erro = 'Nao foi possivel carregar as contas financeiras.';
+      error: error => {
+        this.erro = mensagemErro(error, 'Nao foi possivel carregar as contas financeiras.');
         this.carregando = false;
       }
     });

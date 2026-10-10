@@ -1,10 +1,11 @@
+import { apiUrl } from '../api/api-url';
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Movimentacao, MovimentacaoRequest } from './movimentacao.models';
 
 @Injectable({ providedIn: 'root' })
 export class MovimentacaoService {
-  private readonly apiUrl = 'http://localhost:8080/api/movimentacoes';
+  private readonly apiUrl = apiUrl('movimentacoes');
 
   constructor(private readonly http: HttpClient) {}
 

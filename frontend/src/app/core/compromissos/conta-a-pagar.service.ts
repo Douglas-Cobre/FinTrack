@@ -1,10 +1,11 @@
+import { apiUrl } from '../api/api-url';
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { ContaAPagar, ContaAPagarRequest } from './compromisso.models';
+import { ContaAPagar, ContaAPagarRequest, PreviaEfetivacao } from './compromisso.models';
 
 @Injectable({ providedIn: 'root' })
 export class ContaAPagarService {
-  private readonly apiUrl = 'http://localhost:8080/api/contas-a-pagar';
+  private readonly apiUrl = apiUrl('contas-a-pagar');
 
   constructor(private readonly http: HttpClient) {}
 
@@ -20,8 +21,12 @@ export class ContaAPagarService {
     return this.http.put<ContaAPagar>(`${this.apiUrl}/${id}`, request);
   }
 
-  pagar(id: string, data: string) {
-    return this.http.post<ContaAPagar>(`${this.apiUrl}/${id}/pagar`, { data });
+  previa(id: string, data: string) {
+    return this.http.get<PreviaEfetivacao>(`${this.apiUrl}/${id}/previa`, { params: { data } });
+  }
+
+  pagar(id: string, data: string, valorConfirmado?: number) {
+    return this.http.post<ContaAPagar>(`${this.apiUrl}/${id}/pagar`, { data, valorConfirmado });
   }
 
   cancelar(id: string) {

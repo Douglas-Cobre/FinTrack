@@ -1,86 +1,24 @@
-# Banco de dados - FinTrack
+# Banco de dados
 
-Este projeto pode usar o PostgreSQL local que voce ja acessa pelo DBeaver. Nao precisa usar Docker para desenvolver agora.
+Configure `DB_URL`, `DB_USERNAME` e `DB_PASSWORD` no `.env` local, conforme `.env.example`. O script `run-backend.ps1` importa essas variáveis. Não armazene senhas no código ou nos documentos.
 
-## Conexao usada pelo backend
+O desenvolvimento usa `jdbc:postgresql://localhost:5432/fintrack`. Crie esse banco vazio e deixe o Flyway executar V1–V5. O esquema inclui usuários, contas, categorias, fontes de renda, movimentações, compromissos, parcelamentos, parcelas e configurações financeiras.
 
-```text
-Host: localhost
-Porta: 5432
-Banco: fintrack
-Usuario: postgres
-Senha: 8318
-JDBC: jdbc:postgresql://localhost:5432/fintrack
-```
+Os scripts antigos em `database/` representam a estrutura inicial e não substituem as migrações atuais. Para uma nova instalação, use exclusivamente as migrações do backend.
 
-No Spring Boot, esses dados ficam em:
+## Banco criado manualmente
 
-```text
-backend/src/main/resources/application.yml
-```
+A configuração de desenvolvimento mantém `baseline-on-migrate: true` para compatibilidade com a instalação inicial. Faça backup antes de atualizar um banco existente. Confira a estrutura e o histórico do Flyway; não altere migrações já executadas.
 
-## Fluxo simples recomendado
-
-1. Abra o PostgreSQL/DBeaver.
-2. Confirme que o database `fintrack` existe.
-3. Confirme que as tabelas existem no schema `public`.
-4. Rode o backend.
-
-Para conferir as tabelas no DBeaver:
+Em produção, `baseline-on-migrate` é desabilitado. A implantação pressupõe banco vazio ou banco com histórico Flyway correto. Para migrar a instalação manual antiga, compare o esquema com V1, faça uma restauração de ensaio e estabeleça uma baseline explícita somente depois dessa conferência.
 
 ```sql
-SELECT table_name
-FROM information_schema.tables
-WHERE table_schema = 'public'
-ORDER BY table_name;
+SELECT installed_rank, version, description, success
+FROM flyway_schema_history ORDER BY installed_rank;
 ```
 
-Tabelas esperadas:
+## Testes isolados
 
-```text
-categorias
-contas_a_pagar
-contas_a_receber
-contas_financeiras
-fontes_de_renda
-movimentacoes
-parcelamentos
-parcelas
-usuarios
-```
+Execute `scripts/test-postgres.ps1`. Ele cria nomes `fintrack_test_<uuid>` e `fintrack_restore_<uuid>` e remove apenas esses bancos ao terminar. As classes de integração recusam uma URL que não use o prefixo de teste. O banco usado pelo aplicativo não é limpo nem recriado.
 
-## Quando usar os arquivos SQL
-
-Use apenas se estiver configurando o banco do zero.
-
-Para criar o database manualmente:
-
-```text
-database/create-database.sql
-```
-
-Para criar as tabelas:
-
-```text
-database/setup.sql
-```
-
-Como voce ja executou esses scripts, nao precisa rodar de novo agora.
-
-## Sobre Flyway
-
-O projeto usa Flyway para versionar o banco.
-
-Como as tabelas foram criadas manualmente pelo DBeaver nesta primeira configuracao, o backend esta com:
-
-```yaml
-spring:
-  flyway:
-    baseline-on-migrate: true
-```
-
-Isso permite que o Flyway reconheca o banco existente e siga dali nas proximas migrations.
-
-## Docker
-
-Docker fica opcional neste momento. Os scripts em `scripts/` existem como alternativa, mas voce nao precisa usar se ja tem PostgreSQL local funcionando.
+O PostgreSQL de produção e da CI é 16. A validação local também passou no PostgreSQL 18.3 instalado nesta máquina; a versão atual do Flyway emite um aviso de suporte para o 18. Use PostgreSQL 16 na implantação preparada.

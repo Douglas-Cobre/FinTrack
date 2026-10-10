@@ -1,3 +1,6 @@
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { EfetivacaoDialogComponent } from '../financeiro/efetivacao-dialog.component';
+import { dataLocal } from '../../shared/data-local';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -18,9 +21,9 @@ import { FeatureShellComponent } from '../shared/feature-shell.component';
 @Component({
   selector: 'app-contas-a-pagar',
   standalone: true,
-  imports: [CommonModule, CurrencyPipe, DatePipe, ReactiveFormsModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule, MatListModule, MatSelectModule, FeatureShellComponent],
+  imports: [MatDialogModule, CommonModule, CurrencyPipe, DatePipe, ReactiveFormsModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule, MatListModule, MatSelectModule, FeatureShellComponent],
   template: `
-    <app-feature-shell titulo="Contas a pagar" eyebrow="Fase 6">
+    <app-feature-shell titulo="Contas a pagar">
       <section class="layout">
         <mat-card appearance="outlined">
           <mat-card-header>
@@ -80,12 +83,12 @@ export class ContasAPagarComponent implements OnInit {
   protected readonly form = this.fb.nonNullable.group({
     descricao: ['', Validators.required],
     valor: [0, [Validators.required, Validators.min(0.01)]],
-    dataVencimento: [new Date().toISOString().slice(0, 10), Validators.required],
+    dataVencimento: [dataLocal(), Validators.required],
     contaFinanceiraId: ['', Validators.required],
     categoriaId: ['', Validators.required]
   });
 
-  constructor(private readonly fb: FormBuilder, private readonly service: ContaAPagarService, private readonly contaService: ContaFinanceiraService, private readonly categoriaService: CategoriaService) {}
+  constructor(private readonly dialog: MatDialog, private readonly fb: FormBuilder, private readonly service: ContaAPagarService, private readonly contaService: ContaFinanceiraService, private readonly categoriaService: CategoriaService) {}
 
   ngOnInit(): void { this.carregarBase(); this.carregar(); }
 
@@ -95,11 +98,16 @@ export class ContasAPagarComponent implements OnInit {
     operacao.subscribe({ next: () => { this.cancelar(); this.carregar(); }, error: () => this.erro = 'Nao foi possivel salvar.' });
   }
 
-  protected pagar(item: ContaAPagar): void { this.service.pagar(item.id, new Date().toISOString().slice(0, 10)).subscribe({ next: () => this.carregar(), error: () => this.erro = 'Nao foi possivel pagar.' }); }
+  protected pagar(item: ContaAPagar): void {
+    this.dialog.open(EfetivacaoDialogComponent, {
+      data: { id: item.id, tipo: 'PAGAR', descricao: item.descricao, contaFinanceiraNome: item.contaFinanceiraNome },
+      width: '480px', maxWidth: '95vw'
+    }).afterClosed().subscribe(confirmado => { if (confirmado) this.carregar(); });
+  }
   protected cancelarConta(item: ContaAPagar): void { this.service.cancelar(item.id).subscribe({ next: () => this.carregar(), error: () => this.erro = 'Nao foi possivel cancelar.' }); }
   protected editar(item: ContaAPagar): void { this.emEdicao = item; this.form.setValue({ descricao: item.descricao, valor: item.valor, dataVencimento: item.dataVencimento, contaFinanceiraId: item.contaFinanceiraId, categoriaId: item.categoriaId }); }
   protected excluir(item: ContaAPagar): void { this.service.excluir(item.id).subscribe({ next: () => this.carregar(), error: () => this.erro = 'Nao foi possivel excluir.' }); }
-  protected cancelar(): void { this.emEdicao = null; this.form.reset({ descricao: '', valor: 0, dataVencimento: new Date().toISOString().slice(0, 10), contaFinanceiraId: '', categoriaId: '' }); }
+  protected cancelar(): void { this.emEdicao = null; this.form.reset({ descricao: '', valor: 0, dataVencimento: dataLocal(), contaFinanceiraId: '', categoriaId: '' }); }
   private carregarBase(): void { this.contaService.listar().subscribe((contas) => this.contas = contas); this.categoriaService.listar('DESPESA').subscribe((categorias) => this.categorias = categorias); }
   private carregar(): void { this.service.listar().subscribe({ next: (itens) => this.contasAPagar = itens, error: () => this.erro = 'Nao foi possivel carregar.' }); }
 }

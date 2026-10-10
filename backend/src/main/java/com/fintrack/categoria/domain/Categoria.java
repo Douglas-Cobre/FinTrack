@@ -31,6 +31,10 @@ public class Categoria extends BaseEntity {
     @Column(nullable = false, length = 20)
     private TipoMovimentacao tipo;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "grupo_dre", length = 40)
+    private GrupoDre grupoDre;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
@@ -39,12 +43,22 @@ public class Categoria extends BaseEntity {
     }
 
     public Categoria(String nome, TipoMovimentacao tipo, Usuario usuario) {
+        this(nome, tipo, usuario, null);
+    }
+
+    public Categoria(String nome, TipoMovimentacao tipo, Usuario usuario, GrupoDre grupoDre) {
         this.nome = nome;
         this.tipo = tipo;
         this.usuario = usuario;
+        this.grupoDre = grupoDre;
     }
 
     public void atualizar(String nome, TipoMovimentacao tipo) {
+        atualizar(nome, tipo, grupoDre);
+    }
+
+    public void atualizar(String nome, TipoMovimentacao tipo, GrupoDre grupoDre) {
+        this.grupoDre = grupoDre;
         this.nome = nome;
         this.tipo = tipo;
     }
@@ -61,6 +75,8 @@ public class Categoria extends BaseEntity {
     public TipoMovimentacao getTipo() {
         return tipo;
     }
+
+    public GrupoDre getGrupoDre() { return grupoDre; }
 
     public Usuario getUsuario() {
         return usuario;

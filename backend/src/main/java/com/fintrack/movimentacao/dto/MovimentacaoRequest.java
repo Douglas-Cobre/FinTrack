@@ -28,7 +28,6 @@ public record MovimentacaoRequest(
         @NotNull
         UUID contaFinanceiraId,
 
-        @NotNull
         UUID categoriaId
 ) {
 }

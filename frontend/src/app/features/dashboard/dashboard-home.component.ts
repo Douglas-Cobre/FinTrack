@@ -165,7 +165,7 @@ type CompromissoDashboard = {
             <mat-list *ngIf="ultimasMovimentacoes.length > 0">
               <mat-list-item *ngFor="let movimentacao of ultimasMovimentacoes">
                 <span matListItemTitle>{{ movimentacao.descricao }}</span>
-                <span matListItemLine>{{ movimentacao.contaFinanceiraNome }} - {{ movimentacao.categoriaNome }}</span>
+                <span matListItemLine>{{ movimentacao.contaFinanceiraNome }} - {{ movimentacao.categoriaNome ?? 'Sem categoria' }}</span>
                 <strong
                   class="row-value"
                   [class.income-text]="movimentacao.tipo === 'RECEITA'"

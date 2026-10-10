@@ -1,12 +1,14 @@
 package com.fintrack.categoria.dto;
 
 import com.fintrack.shared.domain.TipoMovimentacao;
+import com.fintrack.categoria.domain.GrupoDre;
 
 import java.util.UUID;
 
 public record CategoriaResponse(
         UUID id,
         String nome,
-        TipoMovimentacao tipo
+        TipoMovimentacao tipo,
+        GrupoDre grupoDre
 ) {
 }

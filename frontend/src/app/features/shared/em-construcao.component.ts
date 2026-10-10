@@ -8,7 +8,7 @@ import { FeatureShellComponent } from './feature-shell.component';
   standalone: true,
   imports: [MatCardModule, FeatureShellComponent],
   template: `
-    <app-feature-shell [titulo]="titulo" eyebrow="Proxima fase">
+    <app-feature-shell [titulo]="titulo">
       <mat-card appearance="outlined">
         <mat-card-header>
           <mat-card-title>Funcionalidade ainda nao implementada</mat-card-title>
@@ -20,7 +20,7 @@ import { FeatureShellComponent } from './feature-shell.component';
 })
 export class EmConstrucaoComponent {
   @Input() titulo = 'Em construcao';
-  @Input() detalhe = 'Ainda faltam os metodos de dominio e API desta fase.';
+  @Input() detalhe = 'Ainda faltam os metodos de dominio e API deste recurso.';
 
   constructor(route: ActivatedRoute) {
     this.titulo = route.snapshot.data['titulo'] ?? this.titulo;

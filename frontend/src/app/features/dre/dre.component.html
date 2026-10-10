@@ -1,0 +1,88 @@
+<app-feature-shell titulo="DRE gerencial">
+  <p class="regime">Regime de caixa — valores recebidos e pagos no período</p>
+  <mat-card appearance="outlined" class="filtros">
+    <mat-card-content>
+      <form [formGroup]="form" (ngSubmit)="consultar()">
+        <mat-form-field appearance="outline">
+          <mat-label>Início</mat-label>
+          <input matInput type="date" formControlName="inicio" required>
+          <mat-error>Informe a data inicial</mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Fim</mat-label>
+          <input matInput type="date" formControlName="fim" required>
+          <mat-error>Informe a data final</mat-error>
+        </mat-form-field>
+        <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid">Consultar</button>
+      </form>
+      <p class="erro-periodo" role="alert" *ngIf="form.hasError('periodoInvalido')">O início deve ser anterior ou igual ao fim.</p>
+    </mat-card-content>
+  </mat-card>
+
+  <section aria-live="polite" [attr.aria-busy]="estado.carregando">
+    <div class="estado" *ngIf="estado.carregando">
+      <p>Consultando movimentações do período…</p>
+      <mat-progress-bar mode="indeterminate" aria-label="Carregando DRE" />
+    </div>
+    <div class="estado erro" role="alert" *ngIf="estado.erro">
+      <p>{{ estado.erro }}</p>
+      <button mat-stroked-button type="button" (click)="consultar()">Tentar novamente</button>
+    </div>
+    <p class="estado" *ngIf="!estado.carregando && !estado.resultado && !estado.erro">Selecione o período e clique em Consultar.</p>
+
+    <ng-container *ngIf="estado.resultado as dre">
+      <p class="periodo">Período: {{ dre.inicio | date:'dd/MM/yyyy' }} a {{ dre.fim | date:'dd/MM/yyyy' }} (inclusive)</p>
+      <div class="aviso" role="status" *ngIf="!dre.completo">
+        <strong>Resultado incompleto: {{ dre.pendencias.quantidade }} movimentação(ões) sem classificação compatível.</strong>
+        <p>Receitas: {{ dre.pendencias.receitas | currency:'BRL':'symbol':'1.2-2':'pt-BR' }} · Despesas: {{ dre.pendencias.despesas | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}. Esses valores não compõem os subtotais.</p>
+        <a mat-stroked-button routerLink="/categorias">Classificar categorias</a>
+        <a mat-button routerLink="/movimentacoes">Revisar movimentações sem categoria</a>
+      </div>
+      <p class="estado" *ngIf="vazio(dre)">Nenhuma movimentação efetivada no período. Todos os grupos permanecem zerados.</p>
+      <mat-card appearance="outlined">
+        <div class="tabela-scroll">
+          <table mat-table [dataSource]="dre.linhas" multiTemplateDataRows aria-label="Apuração da DRE gerencial">
+            <ng-container matColumnDef="descricao">
+              <th mat-header-cell *matHeaderCellDef>Apuração</th>
+              <td mat-cell *matCellDef="let linha">
+                <span class="sinal">{{ sinal(linha) }}</span>
+                <button mat-button type="button" *ngIf="linha.tipo === 'GRUPO'; else subtotal"
+                  [disabled]="linha.categorias.length === 0" (click)="alternar(linha)"
+                  [attr.aria-expanded]="expandidos.has(linha.codigo)" [attr.aria-controls]="'detalhe-' + linha.codigo">
+                  <span aria-hidden="true">{{ expandidos.has(linha.codigo) ? '▾' : '▸' }}</span> {{ linha.descricao }}
+                </button>
+                <ng-template #subtotal><strong>{{ linha.descricao }}</strong></ng-template>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="valor">
+              <th mat-header-cell *matHeaderCellDef class="valor">Valor</th>
+              <td mat-cell *matCellDef="let linha" class="valor" [class.negativo]="linha.valor < 0">{{ linha.valor | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+            </ng-container>
+            <ng-container matColumnDef="detalhes">
+              <td mat-cell *matCellDef="let linha" colspan="2">
+                <div *ngIf="expandidos.has(linha.codigo)" [id]="'detalhe-' + linha.codigo" class="categorias">
+                  <div *ngFor="let categoria of linha.categorias" class="categoria">
+                    <span>{{ categoria.categoriaNome }} <small>({{ categoria.tipoMovimentacao === 'RECEITA' ? 'Receita' : 'Despesa' }})</small></span>
+                    <span class="valor">{{ categoria.valor | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+                  </div>
+                </div>
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="colunas"></tr>
+            <tr mat-row *matRowDef="let linha; columns: colunas" [class.subtotal]="linha.tipo === 'SUBTOTAL'" [class.resultado-final]="linha.codigo === 'RESULTADO_LIQUIDO'"></tr>
+            <tr mat-row *matRowDef="let linha; columns: ['detalhes']" class="detalhes" [class.fechado]="!expandidos.has(linha.codigo)"></tr>
+          </table>
+        </div>
+      </mat-card>
+      <mat-card appearance="outlined" class="fora-dre">
+        <mat-card-content>
+          <strong>Fora da DRE · {{ dre.foraDre.quantidade }} movimentação(ões)</strong>
+          <p>Receitas: {{ dre.foraDre.receitas | currency:'BRL':'symbol':'1.2-2':'pt-BR' }} · Despesas: {{ dre.foraDre.despesas | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</p>
+          <small>Exclusão intencional pela classificação FORA_DRE. Esses valores não compõem o resultado.</small>
+        </mat-card-content>
+      </mat-card>
+    </ng-container>
+  </section>
+  <p class="nota">A DRE usa a classificação atual das categorias. Reclassificar altera também os períodos anteriores.
+    Juros, multas e descontos de compromissos integram o valor da movimentação e seguem sua categoria.</p>
+</app-feature-shell>

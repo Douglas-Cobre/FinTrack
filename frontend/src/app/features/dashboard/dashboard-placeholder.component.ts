@@ -1,25 +1,25 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, HostListener, ViewChild } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
 import { MatListModule } from '@angular/material/list';
-import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
+import { MatButtonModule } from '@angular/material/button';
 
 @Component({
   selector: 'app-dashboard-placeholder',
   standalone: true,
   imports: [
     CommonModule,
-    MatCardModule,
     MatListModule,
     MatSidenavModule,
+    MatButtonModule,
     RouterLink,
     RouterLinkActive,
     RouterOutlet
   ],
   template: `
     <mat-sidenav-container class="shell">
-      <mat-sidenav class="sidenav" mode="side" opened>
+      <mat-sidenav #menu class="sidenav" [mode]="telaPequena ? 'over' : 'side'" [opened]="!telaPequena">
         <section class="brand">
           <div class="brand-mark">F</div>
           <div>
@@ -28,7 +28,7 @@ import { MatSidenavModule } from '@angular/material/sidenav';
           </div>
         </section>
 
-        <mat-nav-list>
+        <mat-nav-list (click)="fecharMenu()">
           <a
             mat-list-item
             class="nav-link"
@@ -47,29 +47,22 @@ import { MatSidenavModule } from '@angular/material/sidenav';
           <a mat-list-item class="nav-link" routerLink="/categorias" routerLinkActive="active-item">
             <span matListItemTitle>Categorias</span>
           </a>
-          <a mat-list-item class="nav-link" routerLink="/contas-a-pagar" routerLinkActive="active-item">
-            <span matListItemTitle>Contas a pagar</span>
-          </a>
-          <a mat-list-item class="nav-link" routerLink="/contas-a-receber" routerLinkActive="active-item">
-            <span matListItemTitle>Contas a receber</span>
+          <a mat-list-item class="nav-link" routerLink="/financeiro" routerLinkActive="active-item">
+            <span matListItemTitle>Financeiro</span>
           </a>
           <a mat-list-item class="nav-link" routerLink="/relatorios" routerLinkActive="active-item">
             <span matListItemTitle>Relatorios</span>
           </a>
+          <a mat-list-item class="nav-link" routerLink="/dre" routerLinkActive="active-item">
+            <span matListItemTitle>DRE</span>
+          </a>
         </mat-nav-list>
 
-        <mat-card class="projection-card" appearance="outlined">
-          <mat-card-header>
-            <mat-card-title>Saldo projetado</mat-card-title>
-            <mat-card-subtitle>Aguardando dados reais</mat-card-subtitle>
-          </mat-card-header>
-          <mat-card-content>
-            <p>Cadastre contas e movimentacoes para calcular esta informacao.</p>
-          </mat-card-content>
-        </mat-card>
       </mat-sidenav>
 
       <mat-sidenav-content class="workspace">
+        <button *ngIf="telaPequena" mat-stroked-button class="abrir-menu" type="button" (click)="menu.toggle()"
+          aria-label="Abrir menu de navegacao">Menu</button>
         <router-outlet />
       </mat-sidenav-content>
     </mat-sidenav-container>
@@ -157,28 +150,6 @@ import { MatSidenavModule } from '@angular/material/sidenav';
       color: inherit;
     }
 
-    .projection-card {
-      margin-top: 28px;
-      background: #1c332e;
-      color: #ffffff;
-      border-color: #38544c;
-    }
-
-    .projection-card mat-card-title {
-      color: #ffffff;
-    }
-
-    .projection-card mat-card-subtitle {
-      color: #b9cbc5;
-    }
-
-    .projection-card p {
-      display: block;
-      margin: 18px 0 16px;
-      color: #c9d8d3;
-      line-height: 1.5;
-    }
-
     mat-list {
       padding: 0;
     }
@@ -190,8 +161,8 @@ import { MatSidenavModule } from '@angular/material/sidenav';
     }
 
     @media (max-width: 720px) {
-      .shell {
-        min-width: 900px;
+      .abrir-menu {
+        margin: 12px 20px;
       }
 
       .sidenav {
@@ -200,4 +171,16 @@ import { MatSidenavModule } from '@angular/material/sidenav';
     }
   `]
 })
-export class DashboardPlaceholderComponent {}
+export class DashboardPlaceholderComponent {
+  @ViewChild('menu') private menu?: MatSidenav;
+  protected telaPequena = window.innerWidth <= 720;
+
+  @HostListener('window:resize')
+  protected atualizarLargura(): void {
+    this.telaPequena = window.innerWidth <= 720;
+  }
+
+  protected fecharMenu(): void {
+    if (this.telaPequena) void this.menu?.close();
+  }
+}

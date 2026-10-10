@@ -1,6 +1,7 @@
 package com.fintrack.categoria.service;
 
 import com.fintrack.categoria.domain.Categoria;
+import com.fintrack.categoria.domain.GrupoDre;
 import com.fintrack.categoria.dto.CategoriaRequest;
 import com.fintrack.categoria.dto.CategoriaResponse;
 import com.fintrack.categoria.repository.CategoriaRepository;
@@ -33,7 +34,8 @@ public class CategoriaService {
             throw new RegraNegocioException("Ja existe uma categoria com este nome e tipo.");
         }
 
-        return toResponse(categoriaRepository.save(new Categoria(nome, request.tipo(), usuario)));
+        validarGrupo(request.tipo(), request.grupoDre());
+        return toResponse(categoriaRepository.save(new Categoria(nome, request.tipo(), usuario, request.grupoDre())));
     }
 
     @Transactional(readOnly = true)
@@ -56,13 +58,19 @@ public class CategoriaService {
             throw new RegraNegocioException("Ja existe uma categoria com este nome e tipo.");
         }
 
-        categoria.atualizar(nome, request.tipo());
+        var grupo = request.grupoDreInformado() ? request.grupoDre() : categoria.getGrupoDre();
+        validarGrupo(request.tipo(), grupo);
+        categoria.atualizar(nome, request.tipo(), grupo);
         return toResponse(categoria);
     }
 
     @Transactional
     public void excluir(UUID id) {
-        categoriaRepository.delete(obterCategoriaDoUsuario(id));
+        var categoria = obterCategoriaDoUsuario(id);
+        if (categoriaRepository.emUso(id)) {
+            throw new RegraNegocioException("Nao e possivel excluir uma categoria com movimentacoes, compromissos ou parcelas vinculados.");
+        }
+        categoriaRepository.delete(categoria);
     }
 
     public Categoria obterCategoriaDoUsuario(UUID id) {
@@ -72,7 +80,13 @@ public class CategoriaService {
                 .orElseThrow(() -> new RegraNegocioException("Categoria nao encontrada."));
     }
 
+    private void validarGrupo(TipoMovimentacao tipo, GrupoDre grupo) {
+        if (grupo != null && !grupo.compativelCom(tipo)) {
+            throw new RegraNegocioException("O grupo da DRE deve ser compativel com o tipo da categoria.");
+        }
+    }
+
     private CategoriaResponse toResponse(Categoria categoria) {
-        return new CategoriaResponse(categoria.getId(), categoria.getNome(), categoria.getTipo());
+        return new CategoriaResponse(categoria.getId(), categoria.getNome(), categoria.getTipo(), categoria.getGrupoDre());
     }
 }

@@ -1,5 +1,9 @@
+import { finalize } from 'rxjs';
+import { ConfirmacaoService } from '../../shared/confirmacao-dialog.component';
+import { mensagemErro } from '../../shared/mensagem-erro';
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -7,7 +11,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
-import { Categoria, TipoMovimentacao } from '../../core/categorias/categoria.models';
+import { Categoria, TipoMovimentacao, GrupoDre, GRUPOS_DRE } from '../../core/categorias/categoria.models';
 import { CategoriaService } from '../../core/categorias/categoria.service';
 import { FeatureShellComponent } from '../shared/feature-shell.component';
 
@@ -26,7 +30,7 @@ import { FeatureShellComponent } from '../shared/feature-shell.component';
     FeatureShellComponent
   ],
   template: `
-    <app-feature-shell titulo="Categorias" eyebrow="Fase 4">
+    <app-feature-shell titulo="Categorias">
       <section class="layout">
         <mat-card appearance="outlined">
           <mat-card-header>
@@ -49,10 +53,19 @@ import { FeatureShellComponent } from '../shared/feature-shell.component';
                 </mat-select>
               </mat-form-field>
 
-              <p class="error" *ngIf="erro">{{ erro }}</p>
+              <mat-form-field appearance="outline">
+                <mat-label>Grupo da DRE</mat-label>
+                <mat-select formControlName="grupoDre">
+                  <mat-option [value]="null">Sem classificacao</mat-option>
+                  <mat-option *ngFor="let grupo of gruposDisponiveis" [value]="grupo.codigo">{{ grupo.descricao }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <p *ngIf="categoriaEmEdicao">Alterar a classificacao modifica tambem a DRE de periodos anteriores.</p>
+
+              <p role="alert" class="error" *ngIf="erro">{{ erro }}</p>
 
               <div class="actions">
-                <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid">Salvar</button>
+                <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || salvando">Salvar</button>
                 <button mat-button type="button" *ngIf="categoriaEmEdicao" (click)="cancelar()">Cancelar</button>
               </div>
             </form>
@@ -71,20 +84,27 @@ import { FeatureShellComponent } from '../shared/feature-shell.component';
               <span>Crie categorias de receita e despesa para classificar movimentacoes.</span>
             </div>
 
-            <mat-list *ngIf="categorias.length > 0">
-              <mat-list-item *ngFor="let categoria of categorias">
-                <span matListItemTitle>{{ categoria.nome }}</span>
-                <span matListItemLine>{{ categoria.tipo === 'RECEITA' ? 'Receita' : 'Despesa' }}</span>
+            <div role="list" *ngIf="categorias.length > 0">
+              <div role="listitem" class="registro" *ngFor="let categoria of categorias">
+                <span class="registro-titulo">{{ categoria.nome }}</span>
+                <span class="registro-detalhe">{{ categoria.tipo === 'RECEITA' ? 'Receita' : 'Despesa' }} · {{ descricaoGrupo(categoria.grupoDre) }}</span>
                 <button mat-button type="button" (click)="editar(categoria)">Editar</button>
                 <button mat-button color="warn" type="button" (click)="excluir(categoria)">Excluir</button>
-              </mat-list-item>
-            </mat-list>
+              </div>
+            </div>
           </mat-card-content>
         </mat-card>
       </section>
     </app-feature-shell>
   `,
   styles: [`
+    .registro { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 16px 0; border-bottom: 1px solid #e0e8e4; }
+    .registro-titulo, .registro-detalhe { width: 100%; overflow-wrap: anywhere; }
+    .registro-titulo { font-weight: 600; }
+    .registro-detalhe { color: #566761; font-size: 0.9rem; }
+    mat-card { min-width: 0; }
+    .actions, .row-actions { flex-wrap: wrap; }
+
     .layout {
       display: grid;
       grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
@@ -129,13 +149,17 @@ import { FeatureShellComponent } from '../shared/feature-shell.component';
   `]
 })
 export class CategoriasComponent implements OnInit {
+  private readonly confirmacao = inject(ConfirmacaoService);
+  private readonly destroyRef = inject(DestroyRef);
   protected categorias: Categoria[] = [];
   protected categoriaEmEdicao: Categoria | null = null;
   protected erro = '';
+  protected salvando = false;
 
   protected readonly form = this.formBuilder.nonNullable.group({
     nome: ['', Validators.required],
-    tipo: ['DESPESA' as TipoMovimentacao, Validators.required]
+    tipo: ['DESPESA' as TipoMovimentacao, Validators.required],
+    grupoDre: this.formBuilder.control<GrupoDre | null>(null)
   });
 
   constructor(
@@ -145,49 +169,71 @@ export class CategoriasComponent implements OnInit {
 
   ngOnInit(): void {
     this.carregar();
+    this.form.controls.tipo.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(tipo => {
+      const grupo = this.form.controls.grupoDre.value;
+      if (grupo && !GRUPOS_DRE.some(item => item.codigo === grupo && (!item.tipo || item.tipo === tipo))) {
+        this.form.controls.grupoDre.setValue(null);
+      }
+    });
+  }
+
+  protected get gruposDisponiveis() {
+    return GRUPOS_DRE.filter(item => !item.tipo || item.tipo === this.form.controls.tipo.value);
+  }
+
+  protected descricaoGrupo(grupo: GrupoDre | null): string {
+    return GRUPOS_DRE.find(item => item.codigo === grupo)?.descricao ?? 'Nao classificada na DRE';
   }
 
   protected salvar(): void {
-    if (this.form.invalid) {
+    if (this.form.invalid || this.salvando) {
       return;
     }
 
     this.erro = '';
+    this.salvando = true;
     const request = this.form.getRawValue();
     const operacao = this.categoriaEmEdicao
       ? this.categoriaService.atualizar(this.categoriaEmEdicao.id, request)
       : this.categoriaService.criar(request);
 
-    operacao.subscribe({
+    operacao.pipe(finalize(() => this.salvando = false)).subscribe({
       next: () => {
         this.cancelar();
         this.carregar();
       },
-      error: () => this.erro = 'Nao foi possivel salvar a categoria.'
+      error: error => this.erro = mensagemErro(error, 'Nao foi possivel salvar a categoria.')
     });
   }
 
   protected editar(categoria: Categoria): void {
     this.categoriaEmEdicao = categoria;
-    this.form.setValue({ nome: categoria.nome, tipo: categoria.tipo });
+    this.form.setValue({ nome: categoria.nome, tipo: categoria.tipo, grupoDre: categoria.grupoDre }, { emitEvent: false });
   }
 
   protected excluir(categoria: Categoria): void {
-    this.categoriaService.excluir(categoria.id).subscribe({
-      next: () => this.carregar(),
-      error: () => this.erro = 'Nao foi possivel excluir a categoria.'
+    this.confirmacao.executar({
+      titulo: 'Excluir categoria?',
+      mensagem: `Excluir "${categoria.nome}"? Esta ação não pode ser desfeita.`,
+      acao: 'Excluir',
+      executar: () => this.categoriaService.excluir(categoria.id)
+    }).subscribe(confirmado => {
+      if (confirmado) {
+        this.erro = '';
+        this.carregar();
+      }
     });
   }
 
   protected cancelar(): void {
     this.categoriaEmEdicao = null;
-    this.form.reset({ nome: '', tipo: 'DESPESA' });
+    this.form.reset({ nome: '', tipo: 'DESPESA', grupoDre: null });
   }
 
   private carregar(): void {
     this.categoriaService.listar().subscribe({
       next: (categorias) => this.categorias = categorias,
-      error: () => this.erro = 'Nao foi possivel carregar as categorias.'
+      error: error => this.erro = mensagemErro(error, 'Nao foi possivel carregar as categorias.')
     });
   }
 }
