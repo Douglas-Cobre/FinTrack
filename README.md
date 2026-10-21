@@ -1,6 +1,6 @@
 # FinTrack
 
-Gestão financeira com Angular 18, Spring Boot 3.3, Java 17 e PostgreSQL. Versão 0.1.0.
+Gestão financeira com Angular 18, Spring Boot 3.3, Java 17 e PostgreSQL. Versão 0.1.0. Para uso local simples, também aceita SQLite em um único arquivo `.db`.
 
 ## Funcionalidades disponíveis
 
@@ -15,7 +15,7 @@ O saldo considera apenas movimentações efetivadas. Movimentações geradas por
 
 ## Desenvolvimento local
 
-Requisitos: Java 17, Node.js 22, PostgreSQL 16 e Maven 3.9. O script Maven usa a instalação portátil em `.tools/`, quando disponível, ou `mvn.cmd` do PATH.
+Requisitos: Java 17, Node.js 22 e Maven 3.9. PostgreSQL 16 é necessário somente para o modo PostgreSQL. O script Maven usa a instalação portátil em `.tools/`, quando disponível, ou `mvn.cmd` do PATH.
 
 No PowerShell, configure as credenciais locais:
 
@@ -45,6 +45,12 @@ npm start
 ```
 
 Acesse `http://localhost:4200`. O servidor Angular encaminha `/api` para o backend por `frontend/proxy.conf.json`. A API local fica em `http://localhost:8080/api`; o Swagger de desenvolvimento em `http://localhost:8080/swagger-ui.html`.
+
+## Uso local com arquivo `.db`
+
+Para usar a aplicação sem instalar ou iniciar PostgreSQL, execute `scripts/run-backend-sqlite.ps1` no lugar de `scripts/run-backend.ps1`. O arquivo SQLite será criado em `backend/data/fintrack.db` e as tabelas serão preparadas automaticamente na primeira inicialização. Inicie o frontend como descrito acima e acesse `http://localhost:4200`.
+
+O arquivo `.db` guarda os dados localmente e pode ser copiado para fazer backup ou levado para outro computador. Para abrir um arquivo em outro local, defina `FINTRACK_DB_FILE` antes de executar o script. Essa opção é para instalação local; a composição de produção continua usando PostgreSQL.
 
 ## Validação
 

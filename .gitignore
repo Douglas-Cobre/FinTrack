@@ -3,6 +3,7 @@
 .tools/
 
 backend/target/
+backend/data/
 frontend/.angular/
 frontend/dist/
 frontend/node_modules/
